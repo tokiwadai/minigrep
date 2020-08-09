@@ -28,12 +28,17 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("not enough arguments");
-        }
-        let query = args[1].clone();
-        let filename = args[2].clone();
+    // Listing 13-27: Changing the body of Config::new to use iterator methods, pp. 322
+    pub fn new(mut args: std::env::Args) -> Result<Config, &'static str> {
+        args.next();
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+        let filename = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file name"),
+        };
         let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
         Ok(Config {
             query,
@@ -42,7 +47,25 @@ impl Config {
         })
     }
 
-    fn new2(args: &[String]) -> Config {
+    pub fn new2(args: &[String]) -> Result<Config, &'static str> {
+        if args.len() < 3 {
+            return Err("not enough arguments");
+        }
+        let query = args[1].clone();
+        let filename = args[2].clone();
+        // We needed clone here because we have a slice with String elements in the parameter args,
+        // but the new function doesn’t own args.
+        // To return ownership of a Config instance, we had to clone the values from the query
+        // and fields of Config so the instance can own its values.
+        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+        Ok(Config {
+            query,
+            filename,
+            case_sensitive,
+        })
+    }
+
+    fn new1(args: &[String]) -> Config {
         if args.len() < 3 {
             panic!("not enough arguments");
         }
@@ -74,7 +97,19 @@ pub fn parse_config(args: &[String]) -> Config {
     }
 }
 
+// Using iterator adaptor methods.
+// Doing so also lets us avoid having a mutable intermediate results vector.
+// The functional programming style prefers to minimize the amount of mutable state make code clearer.
+// Removing the mutable state might enable a future enhancement to make searching happen in parallel,
+// because we wouldn’t have to manage concurrent access to the results vector, pp. 323
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
+}
+
+pub fn search1<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
     let mut results = Vec::new();
     for line in contents.lines() {
         if line.contains(query) {

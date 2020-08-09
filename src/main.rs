@@ -5,8 +5,19 @@ use minigrep::Config;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    let config = Config::new2(&args)
+            .unwrap_or_else(|err| {
+        eprintln!("Problem parsing arguments: {}", err);
+        process::exit(1);
+    });
 
-    let config = Config::new(&args).unwrap_or_else(|err| {
+    // The env::args function returns an iterator!
+    // Rather than collecting the iterator values into a vector and
+    // then passing a slice to Config::new,
+    // now we’re passing ownership of the iterator returned from env::args to
+    // Config::new directly, pp. 321
+    let config = Config::new(env::args())
+            .unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         process::exit(1);
     });
